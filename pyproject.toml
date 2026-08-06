@@ -1,0 +1,27 @@
+[project]
+name = "dupfinder"
+version = "1.0.0"
+description = "Find duplicate files by content hash — a zero-dependency CLI tool."
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+keywords = ["duplicate", "files", "cli", "hash", "dedupe", "utility"]
+authors = [{ name = "1fzx23" }]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Environment :: Console",
+    "Operating System :: OS Independent",
+    "Topic :: System :: Filesystems",
+]
+
+[project.urls]
+Homepage = "https://github.com/1fzx23/dupfinder"
+Repository = "https://github.com/1fzx23/dupfinder"
+
+[project.scripts]
+dupfinder = "dupfinder:main"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"

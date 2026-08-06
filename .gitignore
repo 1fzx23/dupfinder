@@ -1,0 +1,18 @@
+# Byte-compiled / optimized / cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Test / scratch artifacts
+test_sandbox/
+*.tmp
+
+# Editors
+.vscode/
+.idea/
+*.swp

@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>dupfinder · 按内容哈希查找重复文件</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --bg-soft: #161b22;
+    --bg-card: #1c2230;
+    --border: #2d3340;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --accent: #2dd4a7;
+    --accent-2: #58a6ff;
+    --danger: #ff7b72;
+    --radius: 14px;
+    --mono: "SF Mono", "JetBrains Mono", "Fira Code", Consolas, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+      "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent-2); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 0 20px; }
+
+  /* Hero */
+  header.hero {
+    text-align: center;
+    padding: 80px 20px 60px;
+    background:
+      radial-gradient(1200px 400px at 50% -10%, rgba(45,212,167,0.12), transparent),
+      var(--bg);
+    border-bottom: 1px solid var(--border);
+  }
+  .logo {
+    display: inline-flex; align-items: center; gap: 10px;
+    font-family: var(--mono); font-size: 13px; color: var(--muted);
+    border: 1px solid var(--border); padding: 5px 12px; border-radius: 999px;
+    margin-bottom: 22px;
+  }
+  .logo b { color: var(--accent); }
+  h1 {
+    font-size: 52px; letter-spacing: -1px; margin-bottom: 14px;
+    background: linear-gradient(120deg, #fff, #9be8d2);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .tagline { font-size: 19px; color: var(--muted); max-width: 620px; margin: 0 auto 30px; }
+  .cta-row { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 12px 22px; border-radius: 10px; font-weight: 600; font-size: 15px;
+    border: 1px solid var(--border); transition: .18s; cursor: pointer;
+  }
+  .btn.primary { background: var(--accent); color: #04231b; border-color: transparent; }
+  .btn.primary:hover { filter: brightness(1.08); text-decoration: none; }
+  .btn.ghost { background: var(--bg-soft); color: var(--text); }
+  .btn.ghost:hover { border-color: var(--accent); text-decoration: none; }
+
+  /* Sections */
+  section { padding: 60px 0; border-bottom: 1px solid var(--border); }
+  .sec-title { font-size: 28px; margin-bottom: 8px; }
+  .sec-sub { color: var(--muted); margin-bottom: 32px; }
+
+  /* Terminal */
+  .terminal {
+    background: #0a0d12; border: 1px solid var(--border); border-radius: var(--radius);
+    overflow: hidden; font-family: var(--mono); font-size: 13.5px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.35);
+  }
+  .term-bar { display: flex; gap: 7px; padding: 12px 14px; background: #11161d; border-bottom: 1px solid var(--border); }
+  .term-bar i { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+  .term-bar .r { background: #ff5f56; } .term-bar .y { background: #ffbd2e; } .term-bar .g { background: #27c93f; }
+  .term-body { padding: 18px 20px; white-space: pre-wrap; color: #c9d1d9; min-height: 220px; }
+  .term-body .prompt { color: var(--accent); }
+  .term-body .ok { color: var(--accent); }
+  .term-body .dim { color: var(--muted); }
+  .cursor { display: inline-block; width: 9px; height: 16px; background: var(--accent); animation: blink 1s steps(2) infinite; vertical-align: middle; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* Features */
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 18px; }
+  .card {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 22px; transition: .2s;
+  }
+  .card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .card .ico { font-size: 24px; margin-bottom: 10px; }
+  .card h3 { font-size: 17px; margin-bottom: 6px; }
+  .card p { color: var(--muted); font-size: 14px; }
+
+  /* Interactive demo */
+  .drop {
+    border: 2px dashed var(--border); border-radius: var(--radius);
+    padding: 40px 20px; text-align: center; transition: .2s; background: var(--bg-soft);
+  }
+  .drop.over { border-color: var(--accent); background: rgba(45,212,167,0.06); }
+  .drop p { color: var(--muted); margin-top: 8px; }
+  .demo-out {
+    margin-top: 20px; font-family: var(--mono); font-size: 13px; white-space: pre-wrap;
+    background: #0a0d12; border: 1px solid var(--border); border-radius: 10px; padding: 16px;
+    min-height: 60px; color: #c9d1d9;
+  }
+  .demo-out:empty::before { content: "结果会显示在这里…"; color: var(--muted); }
+  .note { font-size: 13px; color: var(--muted); margin-top: 12px; }
+
+  /* Code blocks */
+  pre.code {
+    background: #0a0d12; border: 1px solid var(--border); border-radius: 10px;
+    padding: 16px 18px; overflow-x: auto; font-family: var(--mono); font-size: 13.5px;
+    color: #c9d1d9; position: relative; margin-bottom: 14px;
+  }
+  pre.code .c { color: var(--muted); }
+  .copy {
+    position: absolute; top: 10px; right: 10px; font-size: 12px; padding: 4px 10px;
+    border: 1px solid var(--border); border-radius: 6px; background: var(--bg-soft);
+    color: var(--muted); cursor: pointer;
+  }
+  .copy:hover { color: var(--text); border-color: var(--accent); }
+
+  table.cmds { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 14px; }
+  table.cmds th, table.cmds td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  table.cmds th { color: var(--muted); font-weight: 500; }
+  table.cmds code { font-family: var(--mono); background: var(--bg-soft); padding: 2px 7px; border-radius: 5px; color: var(--accent); }
+
+  footer { text-align: center; padding: 40px 20px; color: var(--muted); font-size: 14px; }
+  .badges { margin-top: 14px; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+  .badge { font-family: var(--mono); font-size: 12px; border: 1px solid var(--border); border-radius: 6px; padding: 3px 9px; color: var(--muted); }
+  @media (max-width: 600px) { h1 { font-size: 38px; } }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="logo">🔍 <b>dupfinder</b> · v1.0.0</div>
+  <h1>dupfinder</h1>
+  <p class="tagline">一个零依赖的命令行工具，按 <b>SHA-256 内容哈希</b> 找出真正的重复文件，告诉你磁盘里能省下多少空间。</p>
+  <div class="cta-row">
+    <a class="btn primary" href="https://github.com/1fzx23/dupfinder" target="_blank" rel="noopener">⭐ 在 GitHub 上查看</a>
+    <a class="btn ghost" href="#demo">▶ 在浏览器里试一下</a>
+  </div>
+</header>
+
+<section>
+  <div class="wrap">
+    <h2 class="sec-title">它长什么样</h2>
+    <p class="sec-sub">扫描一个目录，立刻得到重复分组与可节省空间——默认只读，绝不删文件。</p>
+    <div class="terminal">
+      <div class="term-bar"><i class="r"></i><i class="y"></i><i class="g"></i></div>
+      <div class="term-body" id="term"></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2 class="sec-title">核心特性</h2>
+    <p class="sec-sub">小、快、安全。</p>
+    <div class="grid">
+      <div class="card"><div class="ico">🪶</div><h3>零依赖</h3><p>只用 Python 标准库，Python 3.8+ 直接运行，无需 pip install。</p></div>
+      <div class="card"><div class="ico">🔒</div><h3>默认只读</h3><p>只报告重复文件，不删任何东西。删除需显式加 <code>--delete</code> 并确认。</p></div>
+      <div class="card"><div class="ico">🧠</div><h3>两步加速</h3><p>先按文件大小分桶，只对"大小相同"的文件做哈希，避免无谓的磁盘读取。</p></div>
+      <div class="card"><div class="ico">🤖</div><h3>JSON 输出</h3><p><code>--json</code> 输出机器可读结果，方便接入脚本或其他工具。</p></div>
+      <div class="card"><div class="ico">🧹</div><h3>安全删除</h3><p><code>--delete</code> 每组保留一个，删除其余副本；<code>--yes</code> 可跳过确认用于自动化。</p></div>
+      <div class="card"><div class="ico">💻</div><h3>跨平台</h3><p>Windows / macOS / Linux 通用，纯 Python 实现。</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="demo">
+  <div class="wrap">
+    <h2 class="sec-title">在浏览器里试一下</h2>
+    <p class="sec-sub">下面的演示是 <b>真·前端实现</b>：用浏览器的 <code>crypto.subtle</code> 在本地计算你选中文件的 SHA-256，找出重复文件。<b>文件不会上传到任何服务器。</b></p>
+    <div class="drop" id="drop">
+      <div style="font-size:34px">📁</div>
+      <p><b>点击选择文件夹</b> 或把文件夹拖进来</p>
+      <p style="font-size:13px">支持 <code>webkitdirectory</code> 选择整个目录；仅读取元数据与内容用于本地计算</p>
+      <input type="file" id="picker" webkitdirectory directory multiple style="display:none" />
+    </div>
+    <div class="demo-out" id="demoOut"></div>
+    <p class="note">⚠️ 出于浏览器安全限制，无法获取完整路径；此处用「文件名 + 大小」展示重复分组。大目录可能稍慢，请耐心等待。</p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2 class="sec-title">安装与使用</h2>
+    <p class="sec-sub">不需要安装，直接用 Python 运行即可。</p>
+
+    <pre class="code"><button class="copy" data-copy>复制</button><span class="c"># 方式一：直接运行本地文件</span>
+python dupfinder.py &lt;目录&gt;
+
+<span class="c"># 方式二：从 GitHub 克隆</span>
+git clone https://github.com/1fzx23/dupfinder.git
+cd dupfinder
+python dupfinder.py &lt;目录&gt;</pre>
+
+    <h3 style="margin:22px 0 8px;font-size:18px">常用命令</h3>
+    <table class="cmds">
+      <tr><th>用途</th><th>命令</th></tr>
+      <tr><td>找出重复文件（只读报告）</td><td><code>python dupfinder.py DIR</code></td></tr>
+      <tr><td>只看大于 1MB 的文件</td><td><code>python dupfinder.py DIR --min-size 1048576</code></td></tr>
+      <tr><td>输出 JSON</td><td><code>python dupfinder.py DIR --json</code></td></tr>
+      <tr><td>删除多余副本（保留每组第一个）</td><td><code>python dupfinder.py DIR --delete</code></td></tr>
+      <tr><td>删除且跳过确认（脚本用）</td><td><code>python dupfinder.py DIR --delete --yes</code></td></tr>
+    </table>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2 class="sec-title">工作原理</h2>
+    <p class="sec-sub">为什么它找得准又找得快。</p>
+    <div class="grid">
+      <div class="card"><div class="ico">1️⃣</div><h3>按大小分桶</h3><p>遍历目录，把相同大小的文件归到一组。大小都不同的文件不可能重复，直接排除。</p></div>
+      <div class="card"><div class="ico">2️⃣</div><h3>按内容哈希</h3><p>只对"大小相同"的候选文件计算 SHA-256。哈希相同，内容必然相同。</p></div>
+      <div class="card"><div class="ico">3️⃣</div><h3>报告 / 清理</h3><p>输出重复分组与可节省空间；<code>--delete</code> 时每组保留第一个，删除其余。</p></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div>dupfinder · MIT License · 用 ❤️ 和 Python 标准库写成</div>
+  <div class="badges">
+    <span class="badge">python3</span><span class="badge">zero-dependency</span>
+    <span class="badge">cli</span><span class="badge">sha-256</span>
+    <span class="badge">MIT</span>
+  </div>
+  <div style="margin-top:14px"><a href="https://github.com/1fzx23/dupfinder" target="_blank" rel="noopener">github.com/1fzx23/dupfinder</a></div>
+</footer>
+
+<script>
+  // ---- 终端打字动画 ----
+  const lines = [
+    { t: '<span class="prompt">$</span> python dupfinder.py ~/Downloads --min-size 1048576', c: 'cmd' },
+    { t: '', c: 'n' },
+    { t: 'Found 3 duplicate group(s), 7 files involved.', c: 'ok' },
+    { t: 'Reclaimable space: 12.4 MB', c: 'ok' },
+    { t: '============================================================', c: 'dim' },
+    { t: '', c: 'n' },
+    { t: '[1] 3 copies · 5.0 MB each', c: 't' },
+    { t: '    ~/Downloads/photos/IMG_001.jpg', c: 'n' },
+    { t: '    ~/Downloads/backup/IMG_001.jpg', c: 'n' },
+    { t: '    ~/Downloads/temp/IMG_001.jpg', c: 'n' },
+    { t: '', c: 'n' },
+    { t: '[2] 2 copies · 1.2 MB each', c: 't' },
+    { t: '    ~/Downloads/docs/report.pdf', c: 'n' },
+    { t: '    ~/Desktop/report.pdf', c: 'n' },
+    { t: '', c: 'n' },
+    { t: '<span class="dim"># 加 --delete 可在确认后删除多余副本，每组保留一个</span>', c: 'n' },
+  ];
+  const term = document.getElementById('term');
+  let li = 0, ci = 0;
+  function typeLine() {
+    if (li >= lines.length) { term.innerHTML += '<span class="cursor"></span>'; return; }
+    const line = lines[li];
+    if (line.c === 'cmd') {
+      // type command char by char
+      if (ci === 0) term.innerHTML += '<span class="prompt">$</span> ';
+      const txt = line.t.replace('<span class="prompt">$</span> ', '');
+      if (ci < txt.length) {
+        term.innerHTML = term.innerHTML.slice(0, -0) + txt[ci];
+        ci++;
+        setTimeout(typeLine, 18);
+        return;
+      }
+      term.innerHTML += '\n'; li++; ci = 0; setTimeout(typeLine, 200); return;
+    }
+    if (line.c === 'n') { term.innerHTML += line.t + '\n'; li++; setTimeout(typeLine, 60); return; }
+    if (line.c === 'dim') { term.innerHTML += '<span class="dim">' + line.t + '</span>\n'; li++; setTimeout(typeLine, 60); return; }
+    if (line.c === 'ok') { term.innerHTML += '<span class="ok">' + line.t + '</span>\n'; li++; setTimeout(typeLine, 120); return; }
+    if (line.c === 't') { term.innerHTML += line.t + '\n'; li++; setTimeout(typeLine, 120); return; }
+  }
+  setTimeout(typeLine, 500);
+
+  // ---- 复制按钮 ----
+  document.querySelectorAll('.copy').forEach(b => {
+    b.addEventListener('click', () => {
+      const code = b.parentElement.innerText.replace('复制', '').trim();
+      navigator.clipboard.writeText(code).then(() => {
+        b.textContent = '已复制'; setTimeout(() => b.textContent = '复制', 1500);
+      });
+    });
+  });
+
+  // ---- 浏览器内交互演示：计算 SHA-256 找重复 ----
+  const drop = document.getElementById('drop');
+  const picker = document.getElementById('picker');
+  const out = document.getElementById('demoOut');
+
+  drop.addEventListener('click', () => picker.click());
+  picker.addEventListener('change', e => handleFiles(e.target.files));
+  ['dragover','dragenter'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+  drop.addEventListener('drop', e => { if (e.dataTransfer.files) handleFiles(e.dataTransfer.files); });
+
+  async function sha256(buf) {
+    const hash = await crypto.subtle.digest('SHA-256', buf);
+    return [...new Uint8Array(hash)].map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  async function handleFiles(fileList) {
+    const files = Array.from(fileList).filter(f => f.size > 0);
+    if (files.length === 0) { out.textContent = '（没有可读的文件，或都是空文件）'; return; }
+    out.textContent = `正在计算 ${files.length} 个文件的 SHA-256 …`;
+    const byHash = new Map();
+    let totalBytes = 0;
+    for (const f of files) {
+      totalBytes += f.size;
+      const buf = await f.arrayBuffer();
+      const h = await sha256(buf);
+      if (!byHash.has(h)) byHash.set(h, []);
+      byHash.get(h).push(f);
+    }
+    const groups = [...byHash.values()].filter(g => g.length > 1)
+      .sort((a, b) => b[0].size - a[0].size);
+    if (groups.length === 0) {
+      out.textContent = `✅ 没有发现重复文件（共扫描 ${files.length} 个文件，${(totalBytes/1048576).toFixed(1)} MB）。`;
+      return;
+    }
+    let wasted = 0;
+    let text = `Found ${groups.length} duplicate group(s), ${groups.reduce((s,g)=>s+g.length,0)} files involved.\n`;
+    groups.forEach((g, i) => {
+      const sz = (g[0].size/1024).toFixed(1) + ' KB';
+      wasted += g[0].size * (g.length - 1);
+      text += `\n[${i+1}] ${g.length} copies · ${sz} each\n`;
+      g.forEach(f => text += `    ${f.name} (${f.size} B)\n`);
+    });
+    text += `\nReclaimable space: ${(wasted/1048576).toFixed(2)} MB`;
+    out.textContent = text;
+  }
+</script>
+</body>
+</html>
